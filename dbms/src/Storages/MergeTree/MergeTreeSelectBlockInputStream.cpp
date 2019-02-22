@@ -40,7 +40,7 @@ MergeTreeSelectBlockInputStream::MergeTreeSelectBlockInputStream(
     all_mark_ranges(mark_ranges_),
     part_index_in_query(part_index_in_query_),
     check_columns(check_columns),
-    path(data_part->getFullPath())
+    path(data_part->getFullPath(0)) ///@TODO_IGR
 {
     /// Let's estimate total number of rows for progress bar.
     for (const auto & range : all_mark_ranges)

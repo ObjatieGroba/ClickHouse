@@ -283,11 +283,11 @@ StoragePtr StorageMaterializedView::tryGetTargetTable() const
     return global_context.tryGetTable(target_database_name, target_table_name);
 }
 
-String StorageMaterializedView::getDataPath() const
+Strings StorageMaterializedView::getDataPaths() const
 {
     if (auto table = tryGetTargetTable())
-        return table->getDataPath();
-    return {};
+        return table->getDataPaths(); ///@TODO_IGR
+    return {""};
 }
 
 void StorageMaterializedView::checkTableCanBeDropped() const

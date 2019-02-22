@@ -28,12 +28,12 @@ struct MergeTreeDataPart
     using Checksums = MergeTreeDataPartChecksums;
     using Checksum = MergeTreeDataPartChecksums::Checksum;
 
-    MergeTreeDataPart(const MergeTreeData & storage_, const String & name_, const MergeTreePartInfo & info_)
-        : storage(storage_), name(name_), info(info_)
+    MergeTreeDataPart(const MergeTreeData & storage_, const String & name_, size_t part_id_, const MergeTreePartInfo & info_)
+        : storage(storage_), name(name_), part_id(part_id_), info(info_)
     {
     }
 
-    MergeTreeDataPart(MergeTreeData & storage_, const String & name_);
+    MergeTreeDataPart(MergeTreeData & storage_, const String & name_, size_t part_id_);
 
     /// Returns the name of a column with minimum compressed size (as returned by getColumnSize()).
     /// If no checksums are present returns the name of the first physically existing column.
@@ -61,7 +61,7 @@ struct MergeTreeDataPart
     ColumnSize getTotalColumnsSize() const;
 
     /// Returns full path to part dir
-    String getFullPath() const;
+    String getFullPath(size_t expected_size) const;
 
     /// Returns part->name with prefixes like 'tmp_<name>'
     String getNameWithPrefix() const;
@@ -85,6 +85,7 @@ struct MergeTreeDataPart
     const MergeTreeData & storage;
 
     String name;
+    size_t part_id;
     MergeTreePartInfo info;
 
     /// A directory path (relative to storage's path) where part data is actually stored

@@ -62,10 +62,10 @@ StorageMergeTree::StorageMergeTree(
     const MergeTreeData::MergingParams & merging_params_,
     const MergeTreeSettings & settings_,
     bool has_force_restore_data_flag)
-    : path(path_), database_name(database_name_), table_name(table_name_), full_path(path + escapeForFileName(table_name) + '/'),
+    : path(path_), database_name(database_name_), table_name(table_name_), full_paths{path + escapeForFileName(table_name) + '/'},
     global_context(context_), background_pool(context_.getBackgroundPool()),
     data(database_name, table_name,
-         full_path, columns_, indices_,
+         full_paths, columns_, indices_,
          context_, date_column_name, partition_by_ast_, order_by_ast_, primary_key_ast_,
          sample_by_ast_, merging_params_, settings_, false, attach),
     reader(data), writer(data), merger_mutator(data, global_context.getBackgroundPool()),
@@ -177,15 +177,16 @@ void StorageMergeTree::truncate(const ASTPtr &, const Context &)
     data.clearOldPartsFromFilesystem();
 }
 
-void StorageMergeTree::rename(const String & new_path_to_db, const String & /*new_database_name*/, const String & new_table_name)
+void StorageMergeTree::rename([[maybe_unused]] const String & new_path_to_db, [[maybe_unused]] const String & /*new_database_name*/, [[maybe_unused]] const String & new_table_name)
 {
-    std::string new_full_path = new_path_to_db + escapeForFileName(new_table_name) + '/';
-
-    data.setPath(new_full_path);
-
-    path = new_path_to_db;
-    table_name = new_table_name;
-    full_path = new_full_path;
+    throw Exception{"Function not implemented", 0}; ///@TODO_IGR
+//    std::string new_full_path = new_path_to_db + escapeForFileName(new_table_name) + '/';
+//
+//    data.setPath(new_full_path);
+//
+//    path = new_path_to_db;
+//    table_name = new_table_name;
+//    full_path = new_full_path;
 
     /// NOTE: Logger names are not updated.
 }
@@ -272,7 +273,7 @@ public:
         : future_part(future_part_), storage(storage_)
     {
         /// Assume mutex is already locked, because this method is called from mergeTask.
-        reserved_space = DiskSpaceMonitor::reserve(storage.full_path, total_size); /// May throw.
+        reserved_space = DiskSpaceMonitor::reserve(storage.full_paths[0], total_size); /// May throw. @TODO_IGR
 
         for (const auto & part : future_part.parts)
         {
@@ -332,7 +333,7 @@ public:
 
 void StorageMergeTree::mutate(const MutationCommands & commands, const Context &)
 {
-    MergeTreeMutationEntry entry(commands, full_path, data.insert_increment.get());
+    MergeTreeMutationEntry entry(commands, full_paths[0], data.insert_increment.get()); ///@TODO_IGR
     String file_name;
     {
         std::lock_guard lock(currently_merging_mutex);
@@ -425,11 +426,11 @@ CancellationCode StorageMergeTree::killMutation(const String & mutation_id)
 void StorageMergeTree::loadMutations()
 {
     Poco::DirectoryIterator end;
-    for (auto it = Poco::DirectoryIterator(full_path); it != end; ++it)
+    for (auto it = Poco::DirectoryIterator(full_paths[0]); it != end; ++it) ///@TODO_IGR
     {
         if (startsWith(it.name(), "mutation_"))
         {
-            MergeTreeMutationEntry entry(full_path, it.name());
+            MergeTreeMutationEntry entry(full_paths[0], it.name());
             Int64 block_number = entry.block_number;
             auto insertion = current_mutations_by_id.emplace(it.name(), std::move(entry));
             current_mutations_by_version.emplace(block_number, insertion.first->second);
@@ -480,7 +481,7 @@ bool StorageMergeTree::merge(
         }
         else
         {
-            UInt64 disk_space = DiskSpaceMonitor::getUnreservedFreeSpace(full_path);
+            UInt64 disk_space = DiskSpaceMonitor::getUnreservedFreeSpace(full_paths[0]); ///@TODO_IGR
             selected = merger_mutator.selectAllPartsToMergeWithinPartition(future_part, disk_space, can_merge, partition_id, final, out_disable_reason);
         }
 
@@ -569,7 +570,7 @@ bool StorageMergeTree::tryMutatePart()
     /// You must call destructor with unlocked `currently_merging_mutex`.
     std::optional<CurrentlyMergingPartsTagger> tagger;
     {
-        auto disk_space = DiskSpaceMonitor::getUnreservedFreeSpace(full_path);
+        auto disk_space = DiskSpaceMonitor::getUnreservedFreeSpace(full_paths[0]); ///@TODO_IGR
 
         std::lock_guard lock(currently_merging_mutex);
 
@@ -956,7 +957,7 @@ void StorageMergeTree::attachPartition(const ASTPtr & partition, bool attach_par
     {
         LOG_DEBUG(log, "Looking for parts for partition " << partition_id << " in " << source_dir);
         ActiveDataPartSet active_parts(data.format_version);
-        for (Poco::DirectoryIterator it = Poco::DirectoryIterator(full_path + source_dir); it != Poco::DirectoryIterator(); ++it)
+        for (Poco::DirectoryIterator it = Poco::DirectoryIterator(full_paths[0] + source_dir); it != Poco::DirectoryIterator(); ++it) ///@TODO_IGR
         {
             const String & name = it.name();
             MergeTreePartInfo part_info;

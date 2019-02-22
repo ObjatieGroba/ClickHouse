@@ -211,11 +211,11 @@ StorageReplicatedMergeTree::StorageReplicatedMergeTree(
     bool has_force_restore_data_flag)
     : global_context(context_),
     database_name(database_name_),
-    table_name(name_), full_path(path_ + escapeForFileName(table_name) + '/'),
+    table_name(name_), full_paths{path_ + escapeForFileName(table_name) + '/'},  ///@TODO_IGR
     zookeeper_path(global_context.getMacros()->expand(zookeeper_path_, database_name, table_name)),
     replica_name(global_context.getMacros()->expand(replica_name_, database_name, table_name)),
     data(database_name, table_name,
-        full_path, columns_, indices_,
+         full_paths, columns_, indices_,
         context_, date_column_name, partition_by_ast_, order_by_ast_, primary_key_ast_,
         sample_by_ast_, merging_params_, settings_, true, attach,
         [this] (const std::string & name) { enqueuePartForCheck(name); }),
@@ -1087,7 +1087,7 @@ bool StorageReplicatedMergeTree::tryExecuteMerge(const LogEntry & entry)
     size_t estimated_space_for_merge = MergeTreeDataMergerMutator::estimateNeededDiskSpace(parts);
 
     /// Can throw an exception.
-    DiskSpaceMonitor::ReservationPtr reserved_space = DiskSpaceMonitor::reserve(full_path, estimated_space_for_merge);
+    DiskSpaceMonitor::ReservationPtr reserved_space = DiskSpaceMonitor::reserve(full_paths[0], estimated_space_for_merge); ///@TODO_IGR
 
     auto table_lock = lockStructure(false);
 
@@ -1217,7 +1217,7 @@ bool StorageReplicatedMergeTree::tryExecutePartMutation(const StorageReplicatedM
     MutationCommands commands = queue.getMutationCommands(source_part, new_part_info.mutation);
 
     /// Can throw an exception.
-    DiskSpaceMonitor::ReservationPtr reserved_space = DiskSpaceMonitor::reserve(full_path, estimated_space_for_result);
+    DiskSpaceMonitor::ReservationPtr reserved_space = DiskSpaceMonitor::reserve(full_paths[0], estimated_space_for_result); ///@TODO_IGR
 
     auto table_lock = lockStructure(false);
 
@@ -3037,7 +3037,7 @@ bool StorageReplicatedMergeTree::optimize(const ASTPtr & query, const ASTPtr & p
             for (const MergeTreeData::DataPartPtr & part : data_parts)
                 partition_ids.emplace(part->info.partition_id);
 
-            UInt64 disk_space = DiskSpaceMonitor::getUnreservedFreeSpace(full_path);
+            UInt64 disk_space = DiskSpaceMonitor::getUnreservedFreeSpace(full_paths[0]); ///@TODO_IGR
 
             for (const String & partition_id : partition_ids)
             {
@@ -3061,7 +3061,7 @@ bool StorageReplicatedMergeTree::optimize(const ASTPtr & query, const ASTPtr & p
             }
             else
             {
-                UInt64 disk_space = DiskSpaceMonitor::getUnreservedFreeSpace(full_path);
+                UInt64 disk_space = DiskSpaceMonitor::getUnreservedFreeSpace(full_paths[0]); ///@TODO_IGR
                 String partition_id = data.getPartitionIDFromQuery(partition, query_context);
                 selected = merger_mutator.selectAllPartsToMergeWithinPartition(
                     future_merged_part, disk_space, can_merge, partition_id, final, &disable_reason);
@@ -3572,7 +3572,7 @@ void StorageReplicatedMergeTree::attachPartition(const ASTPtr & partition, bool 
         ActiveDataPartSet active_parts(data.format_version);
 
         std::set<String> part_names;
-        for (Poco::DirectoryIterator it = Poco::DirectoryIterator(full_path + source_dir); it != Poco::DirectoryIterator(); ++it)
+        for (Poco::DirectoryIterator it = Poco::DirectoryIterator(full_paths[0] + source_dir); it != Poco::DirectoryIterator(); ++it) ///@TODO_IGR
         {
             String name = it.name();
             MergeTreePartInfo part_info;
@@ -3592,7 +3592,7 @@ void StorageReplicatedMergeTree::attachPartition(const ASTPtr & partition, bool 
         {
             String containing_part = active_parts.getContainingPart(name);
             if (!containing_part.empty() && containing_part != name)
-                Poco::File(full_path + source_dir + name).renameTo(full_path + source_dir + "inactive_" + name);
+                Poco::File(full_paths[0] + source_dir + name).renameTo(full_paths[0] + source_dir + "inactive_" + name); ///@TODO_IGR
         }
     }
 
@@ -3669,21 +3669,22 @@ void StorageReplicatedMergeTree::drop()
 }
 
 
-void StorageReplicatedMergeTree::rename(const String & new_path_to_db, const String & new_database_name, const String & new_table_name)
+void StorageReplicatedMergeTree::rename([[maybe_unused]] const String & new_path_to_db, [[maybe_unused]] const String & new_database_name, [[maybe_unused]] const String & new_table_name)
 {
-    std::string new_full_path = new_path_to_db + escapeForFileName(new_table_name) + '/';
-
-    data.setPath(new_full_path);
-
-    database_name = new_database_name;
-    table_name = new_table_name;
-    full_path = new_full_path;
-
-    /// Update table name in zookeeper
-    auto zookeeper = getZooKeeper();
-    zookeeper->set(replica_path + "/host", getReplicatedMergeTreeAddress().toString());
-
-    /// TODO: You can update names of loggers.
+    throw Exception{"Function not implemented", 0}; ///@TODO_IGR
+//    std::string new_full_path = new_path_to_db + escapeForFileName(new_table_name) + '/';
+//
+//    data.setPath(new_full_path);
+//
+//    database_name = new_database_name;
+//    table_name = new_table_name;
+//    full_path = new_full_path;
+//
+//    /// Update table name in zookeeper
+//    auto zookeeper = getZooKeeper();
+//    zookeeper->set(replica_path + "/host", getReplicatedMergeTreeAddress().toString());
+//
+//    /// TODO: You can update names of loggers.
 }
 
 
@@ -4166,7 +4167,7 @@ void StorageReplicatedMergeTree::fetchPartition(const ASTPtr & partition, const 
       * Unreliable (there is a race condition) - such a partition may appear a little later.
       */
     Poco::DirectoryIterator dir_end;
-    for (Poco::DirectoryIterator dir_it{data.getFullPath() + "detached/"}; dir_it != dir_end; ++dir_it)
+    for (Poco::DirectoryIterator dir_it{data.getFullPath(0) + "detached/"}; dir_it != dir_end; ++dir_it) ///@TODO_IGR
     {
         MergeTreePartInfo part_info;
         if (MergeTreePartInfo::tryParsePartName(dir_it.name(), &part_info, data.format_version)

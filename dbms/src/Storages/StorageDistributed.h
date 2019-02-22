@@ -86,7 +86,7 @@ public:
     void startup() override;
     void shutdown() override;
 
-    String getDataPath() const override { return path; }
+    Strings getDataPaths() const override { return {path}; } ///@TODO_IGR
 
     const ExpressionActionsPtr & getShardingKeyExpr() const { return sharding_key_expr; }
     const String & getShardingKeyColumnName() const { return sharding_key_column_name; }

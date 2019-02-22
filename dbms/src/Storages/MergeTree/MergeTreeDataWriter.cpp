@@ -161,14 +161,14 @@ MergeTreeData::MutableDataPartPtr MergeTreeDataWriter::writeTempPart(BlockWithPa
     else
         part_name = new_part_info.getPartName();
 
-    MergeTreeData::MutableDataPartPtr new_data_part = std::make_shared<MergeTreeData::DataPart>(data, part_name, new_part_info);
+    MergeTreeData::MutableDataPartPtr new_data_part = std::make_shared<MergeTreeData::DataPart>(data, part_name, 0, new_part_info);
     new_data_part->partition = std::move(partition);
     new_data_part->minmax_idx = std::move(minmax_idx);
     new_data_part->relative_path = TMP_PREFIX + part_name;
     new_data_part->is_temp = true;
 
     /// The name could be non-unique in case of stale files from previous runs.
-    String full_path = new_data_part->getFullPath();
+    String full_path = new_data_part->getFullPath(0); ///@TODO_IGR
     Poco::File dir(full_path);
 
     if (dir.exists())
@@ -212,7 +212,7 @@ MergeTreeData::MutableDataPartPtr MergeTreeDataWriter::writeTempPart(BlockWithPa
     auto compression_codec = data.global_context.chooseCompressionCodec(0, 0);
 
     NamesAndTypesList columns = data.getColumns().getAllPhysical().filter(block.getNames());
-    MergedBlockOutputStream out(data, new_data_part->getFullPath(), columns, compression_codec);
+    MergedBlockOutputStream out(data, new_data_part->getFullPath(0), columns, compression_codec); ///@TODO_IGR
 
     out.writePrefix();
     out.writeWithPermutation(block, perm_ptr);

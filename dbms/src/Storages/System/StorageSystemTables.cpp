@@ -196,7 +196,7 @@ protected:
                     res_columns[res_index++]->insert(0u);  // is_temporary
 
                 if (columns_mask[src_index++])
-                    res_columns[res_index++]->insert(tables_it->table()->getDataPath());
+                    res_columns[res_index++]->insert(tables_it->table()->getDataPaths()[0]); ///@TODO_IGR
 
                 if (columns_mask[src_index++])
                     res_columns[res_index++]->insert(database->getTableMetadataPath(table_name));

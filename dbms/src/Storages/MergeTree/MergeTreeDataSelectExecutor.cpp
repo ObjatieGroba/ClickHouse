@@ -965,7 +965,7 @@ MarkRanges MergeTreeDataSelectExecutor::filterMarksUsingIndex(
     const MarkRanges & ranges,
     const Settings & settings) const
 {
-    if (!Poco::File(part->getFullPath() + index->getFileName() + ".idx").exists())
+    if (!Poco::File(part->getFullPath(0) + index->getFileName() + ".idx").exists()) ///@TODO_IGR
     {
         LOG_DEBUG(log, "File for index `" << index->name << "` does not exist. Skipping it.");
         return ranges;

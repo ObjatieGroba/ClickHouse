@@ -97,7 +97,7 @@ void StorageSystemParts::processNextStorage(MutableColumns & columns, const Stor
         columns[i++]->insert(info.database);
         columns[i++]->insert(info.table);
         columns[i++]->insert(info.engine);
-        columns[i++]->insert(part->getFullPath());
+        columns[i++]->insert(part->getFullPath(0)); ///@TODO_IGR
 
         if (has_state_column)
             columns[i++]->insert(part->stateString());

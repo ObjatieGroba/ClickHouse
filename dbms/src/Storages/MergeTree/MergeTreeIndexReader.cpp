@@ -7,7 +7,7 @@ namespace DB
 MergeTreeIndexReader::MergeTreeIndexReader(
     MergeTreeIndexPtr index, MergeTreeData::DataPartPtr part, size_t marks_count, const MarkRanges & all_mark_ranges)
     : index(index), stream(
-        part->getFullPath() + index->getFileName(), ".idx", marks_count,
+        part->getFullPath(0) + index->getFileName(), ".idx", marks_count, ///@TODO_IGR
         all_mark_ranges, nullptr, false, nullptr, 0, DBMS_DEFAULT_BUFFER_SIZE,
         ReadBufferFromFileBase::ProfileCallback{}, CLOCK_MONOTONIC_COARSE)
 {
