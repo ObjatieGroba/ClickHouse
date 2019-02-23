@@ -200,7 +200,8 @@ MergeTreeData::MutableDataPartPtr Fetcher::fetchPart(
     String tmp_prefix = tmp_prefix_.empty() ? TMP_PREFIX : tmp_prefix_;
 
     String relative_part_path = String(to_detached ? "detached/" : "") + tmp_prefix + part_name;
-    String absolute_part_path = data.getFullPath(0) + relative_part_path + "/"; ///@TODO_IGR
+    String absolute_storage_path = data.getFullPath(0); ///@TODO_IGR
+    String absolute_part_path = absolute_storage_path + relative_part_path + "/";
     Poco::File part_file(absolute_part_path);
 
     if (part_file.exists())
@@ -210,7 +211,7 @@ MergeTreeData::MutableDataPartPtr Fetcher::fetchPart(
 
     part_file.createDirectory();
 
-    MergeTreeData::MutableDataPartPtr new_data_part = std::make_shared<MergeTreeData::DataPart>(data, part_name, 0);///@TODO_IGR
+    MergeTreeData::MutableDataPartPtr new_data_part = std::make_shared<MergeTreeData::DataPart>(data, absolute_storage_path, part_name);
     new_data_part->relative_path = relative_part_path;
     new_data_part->is_temp = true;
 

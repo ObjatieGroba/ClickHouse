@@ -3569,30 +3569,33 @@ void StorageReplicatedMergeTree::attachPartition(const ASTPtr & partition, bool 
     else
     {
         LOG_DEBUG(log, "Looking for parts for partition " << partition_id << " in " << source_dir);
-        ActiveDataPartSet active_parts(data.format_version);
+        ActiveDataPartSet active_parts(data.format_version); ///@TODO_IGR check active_parts for mistakes
 
-        std::set<String> part_names;
-        for (Poco::DirectoryIterator it = Poco::DirectoryIterator(full_paths[0] + source_dir); it != Poco::DirectoryIterator(); ++it) ///@TODO_IGR
-        {
-            String name = it.name();
-            MergeTreePartInfo part_info;
-            if (!MergeTreePartInfo::tryParsePartName(name, &part_info, data.format_version))
-                continue;
-            if (part_info.partition_id != partition_id)
-                continue;
-            LOG_DEBUG(log, "Found part " << name);
-            active_parts.add(name);
-            part_names.insert(name);
+        std::set<std::pair<String, String>> part_names;
+        for (const String & full_path : full_paths) {
+            for (Poco::DirectoryIterator it = Poco::DirectoryIterator(full_path + source_dir);
+                 it != Poco::DirectoryIterator(); ++it)
+            {
+                String name = it.name();
+                MergeTreePartInfo part_info;
+                if (!MergeTreePartInfo::tryParsePartName(name, &part_info, data.format_version))
+                    continue;
+                if (part_info.partition_id != partition_id)
+                    continue;
+                LOG_DEBUG(log, "Found part " << name);
+                active_parts.add(name);
+                part_names.insert(std::make_pair(full_path, name));
+            }
         }
         LOG_DEBUG(log, active_parts.size() << " of them are active");
         parts = active_parts.getParts();
 
         /// Inactive parts rename so they can not be attached in case of repeated ATTACH.
-        for (const auto & name : part_names)
+        for (const auto & name : part_names) ///@TODO_IGR rename name
         {
-            String containing_part = active_parts.getContainingPart(name);
-            if (!containing_part.empty() && containing_part != name)
-                Poco::File(full_paths[0] + source_dir + name).renameTo(full_paths[0] + source_dir + "inactive_" + name); ///@TODO_IGR
+            String containing_part = active_parts.getContainingPart(name.second); ///@TODO_IGR check active_parts for mistakes
+            if (!containing_part.empty() && containing_part != name.second)
+                Poco::File(full_paths[0] + source_dir + name.second).renameTo(name.first + source_dir + "inactive_" + name.second);
         }
     }
 
@@ -3602,7 +3605,7 @@ void StorageReplicatedMergeTree::attachPartition(const ASTPtr & partition, bool 
     for (const String & part : parts)
     {
         LOG_DEBUG(log, "Checking part " << part);
-        loaded_parts.push_back(data.loadPartAndFixMetadata(source_dir + part));
+        loaded_parts.push_back(data.loadPartAndFixMetadata(full_paths[0], source_dir + part)); ///@TODO_IGR its a mistake. WTF?
     }
 
     ReplicatedMergeTreeBlockOutputStream output(*this, 0, 0, false);   /// TODO Allow to use quorum here.

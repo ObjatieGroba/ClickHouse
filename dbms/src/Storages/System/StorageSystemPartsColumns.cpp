@@ -136,7 +136,7 @@ void StorageSystemPartsColumns::processNextStorage(MutableColumns & columns, con
             columns[j++]->insert(info.database);
             columns[j++]->insert(info.table);
             columns[j++]->insert(info.engine);
-            columns[j++]->insert(part->getFullPath(0)); ///@TODO_IGR
+            columns[j++]->insert(part->getFullPath()); ///@TODO_IGR check logic
             columns[j++]->insert(column.name);
             columns[j++]->insert(column.type->getName());
 

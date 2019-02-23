@@ -513,7 +513,8 @@ MergeTreeData::MutableDataPartPtr MergeTreeDataMergerMutator::mergePartsToTempor
               << parts.front()->name << " to " << parts.back()->name
               << " into " << TMP_PREFIX + future_part.name);
 
-    String new_part_tmp_path = data.getFullPath(0) + TMP_PREFIX + future_part.name + "/"; ///@TODO_IGR
+    String part_absolute_path = data.getFullPath(0); ///@TODO_IGR choose var name, choose path by params
+    String new_part_tmp_path = part_absolute_path + TMP_PREFIX + future_part.name + "/";
     if (Poco::File(new_part_tmp_path).exists())
         throw Exception("Directory " + new_part_tmp_path + " already exists", ErrorCodes::DIRECTORY_ALREADY_EXISTS);
 
@@ -531,7 +532,7 @@ MergeTreeData::MutableDataPartPtr MergeTreeDataMergerMutator::mergePartsToTempor
         data.merging_params, gathering_columns, gathering_column_names, merging_columns, merging_column_names);
 
     MergeTreeData::MutableDataPartPtr new_data_part = std::make_shared<MergeTreeData::DataPart>(
-            data, future_part.name, 0, future_part.part_info); ///@TODO_IGR
+            data, part_absolute_path, future_part.name, future_part.part_info);
     new_data_part->partition.assign(future_part.getPartition());
     new_data_part->relative_path = TMP_PREFIX + future_part.name;
     new_data_part->is_temp = true;
@@ -853,12 +854,13 @@ MergeTreeData::MutableDataPartPtr MergeTreeDataMergerMutator::mutatePartToTempor
     else
         LOG_TRACE(log, "Mutating part " << source_part->name << " to mutation version " << future_part.part_info.mutation);
 
+    String part_absolute_path = data.getFullPath(0); ///@TODO_IGR choose path
     MergeTreeData::MutableDataPartPtr new_data_part = std::make_shared<MergeTreeData::DataPart>(
-        data, future_part.name, 0, future_part.part_info); ///@TODO_IGR
+        data, part_absolute_path, future_part.name, future_part.part_info);
     new_data_part->relative_path = "tmp_mut_" + future_part.name;
     new_data_part->is_temp = true;
 
-    String new_part_tmp_path = new_data_part->getFullPath(0); ///@TODO_IGR
+    String new_part_tmp_path = new_data_part->getFullPath();
 
     /// Note: this is done before creating input streams, because otherwise data.data_parts_mutex
     /// (which is locked in data.getTotalActiveSizeInBytes()) is locked after part->columns_lock
@@ -944,7 +946,7 @@ MergeTreeData::MutableDataPartPtr MergeTreeDataMergerMutator::mutatePartToTempor
         }
 
         Poco::DirectoryIterator dir_end;
-        for (Poco::DirectoryIterator dir_it(source_part->getFullPath(0)); dir_it != dir_end; ++dir_it) ///@TODO_IGR
+        for (Poco::DirectoryIterator dir_it(source_part->getFullPath()); dir_it != dir_end; ++dir_it)
         {
             if (files_to_skip.count(dir_it.name()))
                 continue;
@@ -1007,7 +1009,7 @@ MergeTreeData::MutableDataPartPtr MergeTreeDataMergerMutator::mutatePartToTempor
         new_data_part->partition.assign(source_part->partition);
         new_data_part->minmax_idx = source_part->minmax_idx;
         new_data_part->modification_time = time(nullptr);
-        new_data_part->bytes_on_disk = MergeTreeData::DataPart::calculateTotalSizeOnDisk(new_data_part->getFullPath(0)); ///@TODO_IGR
+        new_data_part->bytes_on_disk = MergeTreeData::DataPart::calculateTotalSizeOnDisk(new_data_part->getFullPath());
     }
 
     return new_data_part;

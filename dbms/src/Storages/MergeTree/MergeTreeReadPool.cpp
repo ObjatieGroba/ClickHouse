@@ -134,7 +134,7 @@ MarkRanges MergeTreeReadPool::getRestMarks(const std::string & part_path, const 
     MarkRanges all_part_ranges;
     for (const auto & part_ranges : parts_ranges)
     {
-        if (part_ranges.data_part->getFullPath(0) == part_path) ///@TODO_IGR
+        if (part_ranges.data_part->getFullPath() == part_path) ///@TODO_IGR check logic
         {
             all_part_ranges = part_ranges.ranges;
             break;

@@ -525,7 +525,7 @@ public:
     Names getColumnsRequiredForSampling() const { return columns_required_for_sampling; }
 
     /// Check that the part is not broken and calculate the checksums for it if they are not present.
-    MutableDataPartPtr loadPartAndFixMetadata(const String & relative_path);
+    MutableDataPartPtr loadPartAndFixMetadata(const String & path, const String & relative_path);
 
     /** Create local backup (snapshot) for parts with specified prefix.
       * Backup is created in directory clickhouse_dir/shadow/i/, where i - incremental number,

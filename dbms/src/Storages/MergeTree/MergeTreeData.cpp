@@ -657,7 +657,7 @@ void MergeTreeData::loadDataParts(bool skip_sanity_checks)
         if (!MergeTreePartInfo::tryParsePartName(file_name, &part_info, format_version))
             continue;
 
-        MutableDataPartPtr part = std::make_shared<DataPart>(*this, file_name, path_index, part_info);
+        MutableDataPartPtr part = std::make_shared<DataPart>(*this, full_paths[path_index], file_name, part_info);
         part->relative_path = file_name;
         bool broken = false;
 
@@ -1530,7 +1530,7 @@ MergeTreeData::AlterDataPartTransaction::~AlterDataPartTransaction()
 
         LOG_WARNING(data_part->storage.log, "Aborting ALTER of part " << data_part->relative_path);
 
-        String path = data_part->getFullPath(0); ///@TODO_IGR
+        String path = data_part->getFullPath();
         for (const auto & from_to : rename_map)
         {
             if (!from_to.second.empty())
@@ -2144,11 +2144,11 @@ MergeTreeData::DataPartPtr MergeTreeData::getPartIfExists(const String & part_na
 }
 
 
-MergeTreeData::MutableDataPartPtr MergeTreeData::loadPartAndFixMetadata(const String & relative_path)
+MergeTreeData::MutableDataPartPtr MergeTreeData::loadPartAndFixMetadata(const String & path, const String & relative_path)
 {
-    MutableDataPartPtr part = std::make_shared<DataPart>(*this, Poco::Path(relative_path).getFileName(), 0); ///@TODO_IGR
+    MutableDataPartPtr part = std::make_shared<DataPart>(*this, path, Poco::Path(relative_path).getFileName());
     part->relative_path = relative_path;
-    String full_part_path = part->getFullPath(0); ///@TODO_IGR
+    String full_part_path = part->getFullPath();
 
     /// Earlier the list of columns was written incorrectly. Delete it and re-create.
     if (Poco::File(full_part_path + "columns.txt").exists())
@@ -2581,8 +2581,9 @@ MergeTreeData::MutableDataPartPtr MergeTreeData::cloneAndLoadDataPart(const Merg
     String dst_part_name = src_part->getNewName(dst_part_info);
     String tmp_dst_part_name = tmp_part_prefix + dst_part_name;
 
-    Poco::Path dst_part_absolute_path = Poco::Path(full_paths[0] + tmp_dst_part_name).absolute(); ///@TODO_IGR
-    Poco::Path src_part_absolute_path = Poco::Path(src_part->getFullPath(0)).absolute(); ///@TODO_IGR
+    String data_part_storage_path = full_paths[0]; ///@TODO_IGR choose path
+    Poco::Path dst_part_absolute_path = Poco::Path(data_part_storage_path + tmp_dst_part_name).absolute();
+    Poco::Path src_part_absolute_path = Poco::Path(src_part->getFullPath()).absolute();
 
     if (Poco::File(dst_part_absolute_path).exists())
         throw Exception("Part in " + dst_part_absolute_path.toString() + " already exists", ErrorCodes::DIRECTORY_ALREADY_EXISTS);
@@ -2590,7 +2591,7 @@ MergeTreeData::MutableDataPartPtr MergeTreeData::cloneAndLoadDataPart(const Merg
     LOG_DEBUG(log, "Cloning part " << src_part_absolute_path.toString() << " to " << dst_part_absolute_path.toString());
     localBackup(src_part_absolute_path, dst_part_absolute_path);
 
-    MergeTreeData::MutableDataPartPtr dst_data_part = std::make_shared<MergeTreeData::DataPart>(*this, dst_part_name, 0, dst_part_info); ///@TODO_IGR
+    MergeTreeData::MutableDataPartPtr dst_data_part = std::make_shared<MergeTreeData::DataPart>(*this, data_part_storage_path, dst_part_name, dst_part_info);
     dst_data_part->relative_path = tmp_dst_part_name;
     dst_data_part->is_temp = true;
 
@@ -2623,7 +2624,7 @@ void MergeTreeData::freezePartitionsByMatcher(MatcherFn matcher, const String & 
 
         LOG_DEBUG(log, "Freezing part " << part->name);
 
-        String part_absolute_path = Poco::Path(part->getFullPath(0)).absolute().toString(); ///@TODO_IGR
+        String part_absolute_path = Poco::Path(part->getFullPath()).absolute().toString();
         if (!startsWith(part_absolute_path, clickhouse_path))
             throw Exception("Part path " + part_absolute_path + " is not inside " + clickhouse_path, ErrorCodes::LOGICAL_ERROR);
 

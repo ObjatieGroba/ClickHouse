@@ -977,8 +977,10 @@ void StorageMergeTree::attachPartition(const ASTPtr & partition, bool attach_par
     {
         String source_path = source_dir + source_part_name;
 
+        String part_absolute_path = data.getFullPath(0); ///@TODO_IGR choose path
+
         LOG_DEBUG(log, "Checking data");
-        MergeTreeData::MutableDataPartPtr part = data.loadPartAndFixMetadata(source_path);
+        MergeTreeData::MutableDataPartPtr part = data.loadPartAndFixMetadata(part_absolute_path, source_path);
 
         LOG_INFO(log, "Attaching part " << source_part_name << " from " << source_path);
         data.renameTempPartAndAdd(part, &increment);

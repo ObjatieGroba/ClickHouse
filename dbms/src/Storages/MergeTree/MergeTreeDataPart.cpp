@@ -136,8 +136,9 @@ void MergeTreeDataPart::MinMaxIndex::merge(const MinMaxIndex & other)
 }
 
 
-MergeTreeDataPart::MergeTreeDataPart(MergeTreeData & storage_, const String & name_, size_t part_id_)
-    : storage(storage_), name(name_), part_id(part_id_), info(MergeTreePartInfo::fromPartName(name_, storage.format_version))
+MergeTreeDataPart::MergeTreeDataPart(MergeTreeData & storage_, const String& path_, const String & name_)
+    ///@TODO_IGR check is fromPartName need to use path
+    : storage(storage_), path(path_), name(name_), info(MergeTreePartInfo::fromPartName(name_, storage.format_version))
 {
 }
 
@@ -213,18 +214,18 @@ String MergeTreeDataPart::getColumnNameWithMinumumCompressedSize() const
     }
 
     if (!minimum_size_column)
-        throw Exception("Could not find a column of minimum size in MergeTree, part " + getFullPath(0), ErrorCodes::LOGICAL_ERROR); ///@TODO_IGR
+        throw Exception("Could not find a column of minimum size in MergeTree, part " + getFullPath(), ErrorCodes::LOGICAL_ERROR);
 
     return *minimum_size_column;
 }
 
 
-String MergeTreeDataPart::getFullPath(size_t expected_size) const
+String MergeTreeDataPart::getFullPath() const
 {
     if (relative_path.empty())
         throw Exception("Part relative_path cannot be empty. This is bug.", ErrorCodes::LOGICAL_ERROR);
 
-    return storage.getFullPath(expected_size) + relative_path + "/";
+    return path + relative_path + "/";
 }
 
 String MergeTreeDataPart::getNameWithPrefix() const
@@ -294,7 +295,7 @@ MergeTreeDataPart::~MergeTreeDataPart()
     {
         try
         {
-            std::string path = getFullPath(0); ///@TODO_IGR
+            std::string path = getFullPath();
 
             Poco::File dir(path);
             if (!dir.exists())
@@ -486,7 +487,7 @@ void MergeTreeDataPart::loadIndex()
         if (columns.empty())
             throw Exception("No columns in part " + name, ErrorCodes::NO_FILE_IN_DATA_PART);
 
-        marks_count = Poco::File(getFullPath(0) + escapeForFileName(columns.front().name) + ".mrk") ///@TODO_IGR
+        marks_count = Poco::File(getFullPath() + escapeForFileName(columns.front().name) + ".mrk")
             .getSize() / MERGE_TREE_MARK_SIZE;
     }
 
@@ -503,7 +504,7 @@ void MergeTreeDataPart::loadIndex()
             loaded_index[i]->reserve(marks_count);
         }
 
-        String index_path = getFullPath(0) + "primary.idx"; ///@TODO_IGR
+        String index_path = getFullPath() + "primary.idx";
         ReadBufferFromFile index_file = openForReading(index_path);
 
         for (size_t i = 0; i < marks_count; ++i)    //-V756
@@ -537,7 +538,7 @@ void MergeTreeDataPart::loadPartitionAndMinMaxIndex()
     }
     else
     {
-        String full_path = getFullPath(0); ///@TODO_IGR
+        String full_path = getFullPath();
         partition.load(storage, full_path);
         if (!isEmpty())
             minmax_idx.load(storage, full_path);
@@ -546,14 +547,14 @@ void MergeTreeDataPart::loadPartitionAndMinMaxIndex()
     String calculated_partition_id = partition.getID(storage.partition_key_sample);
     if (calculated_partition_id != info.partition_id)
         throw Exception(
-            "While loading part " + getFullPath(0) + ": calculated partition ID: " + calculated_partition_id ///@TODO_IGR
+            "While loading part " + getFullPath() + ": calculated partition ID: " + calculated_partition_id
             + " differs from partition ID in part name: " + info.partition_id,
             ErrorCodes::CORRUPTED_DATA);
 }
 
 void MergeTreeDataPart::loadChecksums(bool require)
 {
-    String path = getFullPath(0) + "checksums.txt"; ///@TODO_IGR
+    String path = getFullPath() + "checksums.txt";
     Poco::File checksums_file(path);
     if (checksums_file.exists())
     {
@@ -564,14 +565,14 @@ void MergeTreeDataPart::loadChecksums(bool require)
             bytes_on_disk = checksums.getTotalSizeOnDisk();
         }
         else
-            bytes_on_disk = calculateTotalSizeOnDisk(getFullPath(0)); ///@TODO_IGR
+            bytes_on_disk = calculateTotalSizeOnDisk(getFullPath());
     }
     else
     {
         if (require)
             throw Exception("No checksums.txt in part " + name, ErrorCodes::NO_FILE_IN_DATA_PART);
 
-        bytes_on_disk = calculateTotalSizeOnDisk(getFullPath(0)); ///@TODO_IGR
+        bytes_on_disk = calculateTotalSizeOnDisk(getFullPath());
     }
 }
 
@@ -583,7 +584,7 @@ void MergeTreeDataPart::loadRowsCount()
     }
     else if (storage.format_version >= MERGE_TREE_DATA_MIN_FORMAT_VERSION_WITH_CUSTOM_PARTITIONING)
     {
-        String path = getFullPath(0) + "count.txt"; ///@TODO_IGR
+        String path = getFullPath() + "count.txt";
         if (!Poco::File(path).exists())
             throw Exception("No count.txt in part " + name, ErrorCodes::NO_FILE_IN_DATA_PART);
 
@@ -638,7 +639,7 @@ void MergeTreeDataPart::accumulateColumnSizes(ColumnToSize & column_to_size) con
         IDataType::SubstreamPath path;
         name_type.type->enumerateStreams([&](const IDataType::SubstreamPath & substream_path)
         {
-            Poco::File bin_file(getFullPath(0) + IDataType::getFileNameForStream(name_type.name, substream_path) + ".bin"); ///@TODO_IGR
+            Poco::File bin_file(getFullPath() + IDataType::getFileNameForStream(name_type.name, substream_path) + ".bin");
             if (bin_file.exists())
                 column_to_size[name_type.name] += bin_file.getSize();
         }, path);
@@ -647,7 +648,7 @@ void MergeTreeDataPart::accumulateColumnSizes(ColumnToSize & column_to_size) con
 
 void MergeTreeDataPart::loadColumns(bool require)
 {
-    String path = getFullPath(0) + "columns.txt"; ///@TODO_IGR
+    String path = getFullPath() + "columns.txt";
     if (!Poco::File(path).exists())
     {
         if (require)
@@ -655,7 +656,7 @@ void MergeTreeDataPart::loadColumns(bool require)
 
         /// If there is no file with a list of columns, write it down.
         for (const NameAndTypePair & column : storage.getColumns().getAllPhysical())
-            if (Poco::File(getFullPath(0) + escapeForFileName(column.name) + ".bin").exists()) ///@TODO_IGR
+            if (Poco::File(getFullPath() + escapeForFileName(column.name) + ".bin").exists())
                 columns.push_back(column);
 
         if (columns.empty())
@@ -676,7 +677,7 @@ void MergeTreeDataPart::loadColumns(bool require)
 
 void MergeTreeDataPart::checkConsistency(bool require_part_metadata)
 {
-    String path = getFullPath(0); ///@TODO_IGR
+    String path = getFullPath();
 
     if (!checksums.empty())
     {
@@ -782,7 +783,7 @@ bool MergeTreeDataPart::hasColumnFiles(const String & column) const
     /// NOTE: For multi-streams columns we check that just first file exist.
     /// That's Ok under assumption that files exist either for all or for no streams.
 
-    String prefix = getFullPath(0); ///@TODO_IGR
+    String prefix = getFullPath();
 
     String escaped_column = escapeForFileName(column);
     return Poco::File(prefix + escaped_column + ".bin").exists()
