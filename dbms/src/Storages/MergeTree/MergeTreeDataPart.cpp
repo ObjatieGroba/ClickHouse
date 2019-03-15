@@ -347,83 +347,83 @@ void MergeTreeDataPart::remove() const
       * And a race condition can happen that will lead to "File not found" error here.
       */
 
-    throw Exception{"Not", 0}; ///@TODO_IGR
-//    String from = storage.full_path + relative_path;
-//    String to = storage.full_path + "delete_tmp_" + name;
-//
-//    Poco::File from_dir{from};
-//    Poco::File to_dir{to};
-//
-//    if (to_dir.exists())
-//    {
-//        LOG_WARNING(storage.log, "Directory " << to << " (to which part must be renamed before removing) already exists."
-//            " Most likely this is due to unclean restart. Removing it.");
-//
-//        try
-//        {
-//            to_dir.remove(true);
-//        }
-//        catch (...)
-//        {
-//            LOG_ERROR(storage.log, "Cannot remove directory " << to << ". Check owner and access rights.");
-//            throw;
-//        }
-//    }
-//
-//    try
-//    {
-//        from_dir.renameTo(to);
-//    }
-//    catch (const Poco::FileNotFoundException &)
-//    {
-//        LOG_ERROR(storage.log, "Directory " << from << " (part to remove) doesn't exist or one of nested files has gone."
-//            " Most likely this is due to manual removing. This should be discouraged. Ignoring.");
-//
-//        return;
-//    }
-//
-//    to_dir.remove(true);
+    
+    String from = path + relative_path;
+    String to = path + "delete_tmp_" + name;
+
+    Poco::File from_dir{from};
+    Poco::File to_dir{to};
+
+    if (to_dir.exists())
+    {
+        LOG_WARNING(storage.log, "Directory " << to << " (to which part must be renamed before removing) already exists."
+            " Most likely this is due to unclean restart. Removing it.");
+
+        try
+        {
+            to_dir.remove(true);
+        }
+        catch (...)
+        {
+            LOG_ERROR(storage.log, "Cannot remove directory " << to << ". Check owner and access rights.");
+            throw;
+        }
+    }
+
+    try
+    {
+        from_dir.renameTo(to);
+    }
+    catch (const Poco::FileNotFoundException &)
+    {
+        LOG_ERROR(storage.log, "Directory " << from << " (part to remove) doesn't exist or one of nested files has gone."
+            " Most likely this is due to manual removing. This should be discouraged. Ignoring.");
+
+        return;
+    }
+
+    to_dir.remove(true);
 }
 
 
-void MergeTreeDataPart::renameTo([[maybe_unused]] const String & new_relative_path, [[maybe_unused]] bool remove_new_dir_if_exists) const
+void MergeTreeDataPart::renameTo(const String & new_relative_path, bool remove_new_dir_if_exists) const
 {
-    throw Exception{"Not", 0}; ///@TODO_IGR
-//    String from = getFullPath();
-//    String to = storage.full_path + new_relative_path + "/";
-//
-//    Poco::File from_file(from);
-//    if (!from_file.exists())
-//        throw Exception("Part directory " + from + " doesn't exist. Most likely it is logical error.", ErrorCodes::FILE_DOESNT_EXIST);
-//
-//    Poco::File to_file(to);
-//    if (to_file.exists())
-//    {
-//        if (remove_new_dir_if_exists)
-//        {
-//            Names files;
-//            Poco::File(from).list(files);
-//
-//            LOG_WARNING(storage.log, "Part directory " << to << " already exists"
-//                << " and contains " << files.size() << " files. Removing it.");
-//
-//            to_file.remove(true);
-//        }
-//        else
-//        {
-//            throw Exception("part directory " + to + " already exists", ErrorCodes::DIRECTORY_ALREADY_EXISTS);
-//        }
-//    }
-//
-//    from_file.setLastModified(Poco::Timestamp::fromEpochTime(time(nullptr)));
-//    from_file.renameTo(to);
-//    relative_path = new_relative_path;
+    ///@TODO_IGR Check Logic
+    String from = getFullPath();
+    String to = path + new_relative_path + "/";
+
+    Poco::File from_file(from);
+    if (!from_file.exists())
+        throw Exception("Part directory " + from + " doesn't exist. Most likely it is logical error.", ErrorCodes::FILE_DOESNT_EXIST);
+
+    Poco::File to_file(to);
+    if (to_file.exists())
+    {
+        if (remove_new_dir_if_exists)
+        {
+            Names files;
+            Poco::File(from).list(files);
+
+            LOG_WARNING(storage.log, "Part directory " << to << " already exists"
+                << " and contains " << files.size() << " files. Removing it.");
+
+            to_file.remove(true);
+        }
+        else
+        {
+            throw Exception("part directory " + to + " already exists", ErrorCodes::DIRECTORY_ALREADY_EXISTS);
+        }
+    }
+
+    from_file.setLastModified(Poco::Timestamp::fromEpochTime(time(nullptr)));
+    from_file.renameTo(to);
+    relative_path = new_relative_path;
 }
 
 
 String MergeTreeDataPart::getRelativePathForDetachedPart([[maybe_unused]] const String & prefix) const
 {
-    throw Exception{"Not", 0}; ///@TODO_IGR
+    throw Exception{"Not getRelativePathForDetachedPart", 0}; ///@TODO_IGR
 //    String res;
 //    unsigned try_no = 0;
 //    auto dst_name = [&, this] { return "detached/" + prefix + name + (try_no ? "_try" + DB::toString(try_no) : ""); };
@@ -456,7 +456,7 @@ void MergeTreeDataPart::renameToDetached(const String & prefix) const
 
 void MergeTreeDataPart::makeCloneInDetached([[maybe_unused]] const String & prefix) const
 {
-    throw Exception{"Not", 0}; ///@TODO_IGR
+    throw Exception{"Not makeCloneInDetached", 0}; ///@TODO_IGR
 //    Poco::Path src(getFullPath());
 //    Poco::Path dst(storage.full_path + getRelativePathForDetachedPart(prefix));
 //    /// Backup is not recursive (max_level is 0), so do not copy inner directories

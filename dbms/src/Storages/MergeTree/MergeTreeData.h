@@ -363,7 +363,7 @@ public:
 
     String getTableName() const { return table_name; }
 
-    String getFullPath([[maybe_unused]] size_t expected_size) const { return full_paths[0]; } ///@TODO_IGR
+    String getFullPath(size_t expected_size) const;
 
     String getLogName() const { return log_name; }
 

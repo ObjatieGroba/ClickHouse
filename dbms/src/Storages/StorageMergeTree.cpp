@@ -62,7 +62,7 @@ StorageMergeTree::StorageMergeTree(
     const MergeTreeData::MergingParams & merging_params_,
     const MergeTreeSettings & settings_,
     bool has_force_restore_data_flag)
-    : path(path_), database_name(database_name_), table_name(table_name_), full_paths{path + escapeForFileName(table_name) + '/'},
+    : path(path_), database_name(database_name_), table_name(table_name_), full_paths{path + escapeForFileName(table_name) + '/', "/home/igr/ClickHouse/data2/" + escapeForFileName(table_name) + '/'},
     global_context(context_), background_pool(context_.getBackgroundPool()),
     data(database_name, table_name,
          full_paths, columns_, indices_,

@@ -667,6 +667,9 @@ void MergeTreeData::loadDataParts(bool skip_sanity_checks)
         }
         catch (const Exception & e)
         {
+
+            std::cerr << "HERE HERE HERE !!! !!! !!! =================";
+            std::cerr << e.what() << std::endl;
             /// Don't count the part as broken if there is not enough memory to load it.
             /// In fact, there can be many similar situations.
             /// But it is OK, because there is a safety guard against deleting too many parts.
@@ -2403,6 +2406,20 @@ MergeTreeData::DataPartsVector MergeTreeData::getAllDataPartsVector(MergeTreeDat
 
     return res;
 }
+
+String MergeTreeData::getFullPath(size_t expected_size) const {
+    for (const String &path : full_paths) {
+        Poco::File dir(path);
+        size_t MAX_USE_SPACE = 1u << 16;
+        size_t free_space = MAX_USE_SPACE - dir.usableSpace();
+        if (free_space > expected_size * 2) {
+            std::cerr << "Choosed " << path << std::endl;
+            return path;
+        }
+    }
+    std::cerr << "Choosed last " <<  full_paths[full_paths.size() - 1] << std::endl;
+    return full_paths[full_paths.size() - 1];
+} ///@TODO_IGR
 
 MergeTreeData::DataParts MergeTreeData::getDataParts(const DataPartStates & affordable_states) const
 {
