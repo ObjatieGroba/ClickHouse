@@ -62,6 +62,9 @@ struct MergeTreeDataPart
 
     /// Returns full path to part dir
     String getFullPath() const;
+    
+    /// Returns part size on disk in bytes
+    size_t getFileSize() const;
 
     /// Returns part->name with prefixes like 'tmp_<name>'
     String getNameWithPrefix() const;

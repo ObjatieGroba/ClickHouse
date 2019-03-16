@@ -2407,16 +2407,18 @@ MergeTreeData::DataPartsVector MergeTreeData::getAllDataPartsVector(MergeTreeDat
     return res;
 }
 
-String MergeTreeData::getFullPath(size_t expected_size) const {
+String MergeTreeData::getFullPathForPart(UInt64 expected_size) const {
+    std::cerr << "Exp size " << expected_size << std::endl;
     for (const String &path : full_paths) {
-        Poco::File dir(path);
-        size_t MAX_USE_SPACE = 1u << 16;
-        size_t free_space = MAX_USE_SPACE - dir.usableSpace();
+        
+        UInt64 free_space = DiskSpaceMonitor::getUnreservedFreeSpace(path); ///@TODO_IGR ASK reserve?
+        
         if (free_space > expected_size * 2) {
-            std::cerr << "Choosed " << path << std::endl;
+            std::cerr << "Choosed " << free_space << "  " << path << std::endl;
             return path;
         }
     }
+    /// @TODO_IGR No idea what shoud we do if space is not enought
     std::cerr << "Choosed last " <<  full_paths[full_paths.size() - 1] << std::endl;
     return full_paths[full_paths.size() - 1];
 } ///@TODO_IGR

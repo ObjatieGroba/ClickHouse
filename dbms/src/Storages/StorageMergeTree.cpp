@@ -62,7 +62,7 @@ StorageMergeTree::StorageMergeTree(
     const MergeTreeData::MergingParams & merging_params_,
     const MergeTreeSettings & settings_,
     bool has_force_restore_data_flag)
-    : path(path_), database_name(database_name_), table_name(table_name_), full_paths{path + escapeForFileName(table_name) + '/', "/home/igr/ClickHouse/data2/" + escapeForFileName(table_name) + '/'},
+    : path(path_), database_name(database_name_), table_name(table_name_), full_paths{path + escapeForFileName(table_name) + '/', "/mnt/data/Data2/" + escapeForFileName(table_name) + '/'},
     global_context(context_), background_pool(context_.getBackgroundPool()),
     data(database_name, table_name,
          full_paths, columns_, indices_,
@@ -948,41 +948,43 @@ void StorageMergeTree::attachPartition(const ASTPtr & partition, bool attach_par
     String source_dir = "detached/";
 
     /// Let's make a list of parts to add.
-    Strings parts;
+    ActiveDataPartSet::PartPathNames parts;
     if (attach_part)
     {
-        parts.push_back(partition_id);
+        for (const String & full_path : full_paths) {
+            parts.push_back(ActiveDataPartSet::PartPathName{full_path, partition_id}); ///@TODO_IGR ASK
+        }
     }
     else
     {
         LOG_DEBUG(log, "Looking for parts for partition " << partition_id << " in " << source_dir);
         ActiveDataPartSet active_parts(data.format_version);
-        for (Poco::DirectoryIterator it = Poco::DirectoryIterator(full_paths[0] + source_dir); it != Poco::DirectoryIterator(); ++it) ///@TODO_IGR
-        {
-            const String & name = it.name();
-            MergeTreePartInfo part_info;
-            if (!MergeTreePartInfo::tryParsePartName(name, &part_info, data.format_version)
-                || part_info.partition_id != partition_id)
+        for (const String & full_path : full_paths) {
+            for (Poco::DirectoryIterator it = Poco::DirectoryIterator(full_path + source_dir); it != Poco::DirectoryIterator(); ++it) ///@TODO_IGR
             {
-                continue;
+                const String & name = it.name();
+                MergeTreePartInfo part_info;
+                if (!MergeTreePartInfo::tryParsePartName(name, &part_info, data.format_version)
+                    || part_info.partition_id != partition_id)
+                {
+                    continue;
+                }
+                LOG_DEBUG(log, "Found part " << name);
+                active_parts.add(full_path, name);
             }
-            LOG_DEBUG(log, "Found part " << name);
-            active_parts.add(name);
         }
         LOG_DEBUG(log, active_parts.size() << " of them are active");
         parts = active_parts.getParts();
     }
 
-    for (const auto & source_part_name : parts)
+    for (const auto & source_part : parts)
     {
-        String source_path = source_dir + source_part_name;
-
-        String part_absolute_path = data.getFullPath(0); ///@TODO_IGR choose path
+        String source_path = source_dir + source_part.name;
 
         LOG_DEBUG(log, "Checking data");
-        MergeTreeData::MutableDataPartPtr part = data.loadPartAndFixMetadata(part_absolute_path, source_path);
+        MergeTreeData::MutableDataPartPtr part = data.loadPartAndFixMetadata(source_part.path, source_part.name);
 
-        LOG_INFO(log, "Attaching part " << source_part_name << " from " << source_path);
+        LOG_INFO(log, "Attaching part " << source_part.name << " from " << source_path);
         data.renameTempPartAndAdd(part, &increment);
 
         LOG_INFO(log, "Finished attaching part");

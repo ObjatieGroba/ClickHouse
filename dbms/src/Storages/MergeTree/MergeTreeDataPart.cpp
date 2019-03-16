@@ -228,6 +228,11 @@ String MergeTreeDataPart::getFullPath() const
     return path + relative_path + "/";
 }
 
+size_t MergeTreeDataPart::getFileSize() const
+{
+    return Poco::File(getFullPath()).getSize();
+}
+
 String MergeTreeDataPart::getNameWithPrefix() const
 {
     String res = Poco::Path(relative_path).getFileName();

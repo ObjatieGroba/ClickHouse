@@ -119,6 +119,14 @@ void FutureMergedMutatedPart::assign(MergeTreeData::DataPartsVector parts_)
         name = part_info.getPartName();
 }
 
+size_t FutureMergedMutatedPart::expectedSize() const {
+    size_t size = 0;
+    for (auto &part : parts) {
+        size += part->getFileSize();
+    }
+    return size;
+}
+
 MergeTreeDataMergerMutator::MergeTreeDataMergerMutator(MergeTreeData & data_, const BackgroundProcessingPool & pool_)
     : data(data_), pool(pool_), log(&Logger::get(data.getLogName() + " (MergerMutator)"))
 {
@@ -512,8 +520,10 @@ MergeTreeData::MutableDataPartPtr MergeTreeDataMergerMutator::mergePartsToTempor
     LOG_DEBUG(log, "Merging " << parts.size() << " parts: from "
               << parts.front()->name << " to " << parts.back()->name
               << " into " << TMP_PREFIX + future_part.name);
-
-    String part_absolute_path = data.getFullPath(0); ///@TODO_IGR choose var name, choose path by params
+    
+    size_t expected_size = future_part.expectedSize();
+    String part_absolute_path = data.getFullPathForPart(expected_size); ///@TODO_IGR choose var name, choose path by params
+    
     String new_part_tmp_path = part_absolute_path + TMP_PREFIX + future_part.name + "/";
     if (Poco::File(new_part_tmp_path).exists())
         throw Exception("Directory " + new_part_tmp_path + " already exists", ErrorCodes::DIRECTORY_ALREADY_EXISTS);
@@ -854,7 +864,9 @@ MergeTreeData::MutableDataPartPtr MergeTreeDataMergerMutator::mutatePartToTempor
     else
         LOG_TRACE(log, "Mutating part " << source_part->name << " to mutation version " << future_part.part_info.mutation);
 
-    String part_absolute_path = data.getFullPath(0); ///@TODO_IGR choose path
+    size_t expected_size = future_part.expectedSize();
+    String part_absolute_path = data.getFullPathForPart(expected_size); ///@TODO_IGR choose path
+    
     MergeTreeData::MutableDataPartPtr new_data_part = std::make_shared<MergeTreeData::DataPart>(
         data, part_absolute_path, future_part.name, future_part.part_info);
     new_data_part->relative_path = "tmp_mut_" + future_part.name;

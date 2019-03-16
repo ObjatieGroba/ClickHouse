@@ -363,7 +363,7 @@ public:
 
     String getTableName() const { return table_name; }
 
-    String getFullPath(size_t expected_size) const;
+    String getFullPathForPart(UInt64 expected_size) const;
 
     String getLogName() const { return log_name; }
 

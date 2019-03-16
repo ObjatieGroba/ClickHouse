@@ -100,7 +100,7 @@ void Service::processQuery(const Poco::Net::HTMLForm & params, ReadBuffer & /*bo
         {
             String file_name = it.first;
 
-            String path = data.getFullPath(0) + part_name + "/" + file_name; ///@TODO_IGR
+            String path = part->getFullPath() + part_name + "/" + file_name; ///@TODO_IGR
 
             UInt64 size = Poco::File(path).getSize();
 
@@ -200,7 +200,7 @@ MergeTreeData::MutableDataPartPtr Fetcher::fetchPart(
     String tmp_prefix = tmp_prefix_.empty() ? TMP_PREFIX : tmp_prefix_;
 
     String relative_part_path = String(to_detached ? "detached/" : "") + tmp_prefix + part_name;
-    String absolute_storage_path = data.getFullPath(0); ///@TODO_IGR
+    String absolute_storage_path = data.getFullPathForPart(0); ///@TODO_IGR ASK ???
     String absolute_part_path = absolute_storage_path + relative_part_path + "/";
     Poco::File part_file(absolute_part_path);
 
